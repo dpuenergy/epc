@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EPC – interaktivní vysvětlení (verze s úpravami času, bublin a vstupů)</title>
+<style>
+:root{
+  --bg:#f6f8fb;--panel:#fff;--muted:#5b6776;--text:#0e1a2b;
+  --col-principal:#282560;--col-immediate:#5551a6;--col-interest:#9fbadf;
+  --col-subsidy:#c7d6ea;--col-savings:#94a3b8;--col-cost:#e2e8f0;
+  --border:#e5eaf1; --logo-size:44px; --logo-pad:6px; --logo-max-h:60px; --fallback-scale:.9;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;background:#f6f8fb;color:var(--text)}
+.wrap{max-width:1200px;margin:0 auto;padding:24px}
+header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:var(--logo-size);height:var(--logo-size);border-radius:12px;display:grid;place-items:center;background:#fff;border:1px solid var(--border);overflow:hidden}
+.logo img{width:100%;height:100%;object-fit:contain;display:block;padding:var(--logo-pad)}
+.logo .fallback{width:100%;height:100%;display:grid;place-items:center}
+.logo .fallback svg{width:calc(var(--fallback-scale)*100%);height:calc(var(--fallback-scale)*100%)}
+.logo.frameless{width:auto;height:auto;border:none;background:transparent;border-radius:0;overflow:visible;display:flex;align-items:center}
+.logo.frameless img{display:block;width:auto;height:var(--logo-max-h);padding:0;object-fit:contain}
+
+h1{font-size:28px;margin:0;font-weight:800}
+.muted{color:#5b6776;font-size:14px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{appearance:none;border:0;border-radius:14px;padding:10px 14px;background:#f0f5fb;color:#0e1a2b;cursor:pointer;font-weight:600;box-shadow:inset 0 0 0 1px #d5e1f0;transition:.2s}
+.btn:hover{transform:translateY(-1px);box-shadow:inset 0 0 0 1px var(--col-principal)}
+.btn.small{padding:8px 12px;border-radius:12px;font-size:14px}
+
+.stage{background:#fff;border-radius:20px;padding:12px 16px;box-shadow:0 10px 30px #0001;border:1px solid #e6ecf3}
+.card{background:#fff;border-radius:18px;padding:16px 18px;border:1px solid #e6ecf3}
+.title{font-size:17px;font-weight:800;margin:0 0 8px}
+
+.layout{display:grid;grid-template-columns:1.5fr .8fr;gap:22px}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+.sidebar{display:flex;flex-direction:column;gap:12px}
+
+.hint{margin:4px 0 8px;font-size:13px;color:#64748b}
+.dialog{display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow:auto;padding-right:6px}
+.bubble{padding:12px 14px;border-radius:16px;line-height:1.5;font-size:15px;display:flex;gap:10px;align-items:flex-start}
+.from-mayor{align-self:flex-start;background:#f2f7fc;border:1px solid #d7e6f5;max-width:80%}
+.from-firm{align-self:flex-end;background:#f7fafc;border:1px solid #e8eef6;max-width:80%}
+.avatar{width:28px;height:28px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex:0 0 28px}
+.avatar.m{background:#64748b}.avatar.d{background:var(--col-principal)}
+.name{font-size:12px;color:#475569;margin-bottom:2px}
+.bubble.typing .text .content{display:none}
+.dots{display:inline-block;min-width:1.6em}
+.dots:after{content:"…"; animation:dots 1s steps(1,end) infinite}
+@keyframes dots{0%{content:"."}33%{content:".."}66%{content:"..."}100%{content:"."}}
+.bubble.interactive{cursor:pointer;outline:2px dashed #d1d9e6}
+
+.choiceHeader{margin:6px 0 2px 44px;font-size:13px;color:#64748b;font-weight:600}
+.bubble.choice{background:#eef6ff;border:1.5px dashed #bcd3f2;cursor:pointer}
+.bubble.choice:hover{background:#e6f0ff;border-color:#9fc0ee}
+.bubble.choice .chip{display:inline-block;margin-bottom:4px;font-size:11px;color:#2f3b63;background:#dfeefe;border:1px solid #cfe3fb;border-radius:999px;padding:1px 8px}
+.editChoice{display:inline-flex;gap:6px;align-items:center;margin-top:6px;font-size:12px;color:#64748b;text-decoration:underline;cursor:pointer}
+.editChoice svg{width:14px;height:14px}
+
+#inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 6px}
+.input{display:grid;gap:6px}
+.input label{font-size:12px;color:#475569}
+.input .row{display:flex;gap:8px;align-items:center}
+.input input{padding:8px 10px;border:1px solid #dbe3f0;border-radius:10px;width:120px;text-align:right}
+.input .unit{font-size:12px;color:#64748b}
+
+#extraInputs{margin-top:8px}
+#extraInputs.show{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+
+#calcDiagram .grid{display:grid;grid-template-columns:1fr;gap:12px}
+.node{border:1px solid #e6edf6;background:#f7f9fc;border-radius:12px;padding:10px 12px;position:relative}
+.node.hidden{display:none}
+.node .k{font-size:11px;color:#5b6776;text-transform:uppercase;letter-spacing:.3px}
+.node .v{font-weight:800;font-size:16px;margin-top:2px}
+.node .eq{font-size:12px;color:#64748b;margin-top:4px}
+.badge{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;background:#eef2ff;border:1px solid #e3e8ff;color:#28306e;margin-right:6px;font-weight:800}
+.hintq{position:absolute;right:10px;top:10px;font-size:12px;border:1px solid #cfd8e3;border-radius:999px;width:18px;height:18px;display:grid;place-items:center;cursor:pointer;background:#fff;color:#475569}
+.hintq:hover{background:#f1f5f9}
+.tooltip{position:absolute;z-index:50;right:28px;top:8px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;font-size:12px;color:#0f172a;box-shadow:0 6px 18px rgba(2,6,23,.12);max-width:280px}
+.tooltip b{font-weight:800}
+
+.canvasWrap{background:#f7f9fc;border:1px solid #e6edf6;border-radius:12px;padding:8px;cursor:zoom-in;position:relative}
+.canvasWrap h5{margin:0 0 2px;font-size:12px;color:#334155}
+#pie{width:100%;height:320px} #bars{width:100%;height:220px}
+.pieFlex{display:grid;grid-template-rows:auto auto;justify-items:center;gap:4px}
+.pieFlex .legend{justify-self:start;margin-top:2px}
+.legend{list-style:none;margin:0;padding:0;font-size:13px}
+.legend li{display:flex;align-items:center;gap:8px;margin:4px 0}
+.legend .sw{width:12px;height:12px;border-radius:3px;border:1px solid #d1d9e6}
+.noteUnder{margin-top:6px;color:#475569;font-size:12px}
+
+.compareWrap{margin-top:18px}
+.controlsRow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:0 0 8px 0}
+.controlsRow .group{display:flex;gap:8px;align-items:center;background:#f7f9fc;border:1px solid #e6edf6;border-radius:10px;padding:8px 10px}
+.controlsRow input{padding:6px 8px;border:1px solid #dbe3f0;border-radius:8px;text-align:right}
+#in_rinv{width:72px} #in_ninv{width:62px}
+.controlsRow .unit{font-size:12px;color:#64748b}
+.controlsRow label{font-size:13px;color:#334155}
+.compare{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #e6edf6;border-radius:12px;overflow:hidden;table-layout:fixed}
+.compare th,.compare td{padding:6px 8px;border-top:1px solid #e6edf6;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compare th:first-child,.compare td:first-child{text-align:left;color:#334155;width:36%}
+.compare thead th{border-top:0;font-weight:800;background:#f7f9fc}
+.compare .col-slim{width:16%}
+.compare tfoot td{font-size:12px;color:#64748b;border-top:1px dashed #e2e8f0;text-align:left}
+.cmpLegend{font-size:12px;color:#475569;margin:8px 0 0 0;display:block}
+.cmpLegend .row{display:block;margin:2px 0}
+.cmpLegend .tag{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:#eef2ff;border:1px solid #dfe3ff;color:#20253e;font-weight:700;margin-right:6px}
+
+/* Chat invalidation notice */
+.chat-disabled .dialog{filter:grayscale(1) opacity(.6); pointer-events:none}
+.chatNotice{display:none;width:100%;box-sizing:border-box;margin-top:8px;margin-bottom:8px;background:#fff7e6;border:1px solid #ffd591;border-left:4px solid #faad14;padding:10px 12px;border-radius:6px;}
+.chatNotice.show{display:block;}
+.chatNotice .msg{display:block;white-space:normal;overflow:visible;text-overflow:clip;margin-bottom:8px;}
+.chatNotice-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;align-items:center;}
+
+/* === Collapsible panels === */
+.card.collapsible .panelHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card.collapsible .panelHead .toggleBtn{appearance:none;border:1px solid var(--border);background:#f7f9fc;padding:4px 8px;border-radius:8px;font-weight:600;font-size:12px;color:#334155;cursor:pointer}
+.card.collapsible .panelHead .toggleBtn .arrow{display:inline-block;transition:transform .18s ease;margin-right:6px}
+.card.collapsible.collapsed .panelHead .toggleBtn .arrow{transform:rotate(-90deg)}
+.card.collapsible.collapsed>:not(.panelHead){display:none!important}
+.card.collapsible.collapsed{overflow:hidden}
+
+/* Overlay for enlarged charts */
+#overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.55);z-index:9999;padding:24px}
+#overlay .box{background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 10px 30px rgba(2,6,23,.25);max-width:min(1100px,96vw);width:100%;max-height:90vh;overflow:hidden;padding:12px 12px 4px;position:relative;display:flex;flex-direction:column;align-items:stretch}
+#overlay .box .close{appearance:none;background:#f7f9fc;border:1px solid var(--border);border-radius:10px;font-size:18px;line-height:1;padding:0;cursor:pointer;position:absolute;top:8px;right:8px;width:32px;height:32px;display:grid;place-items:center}
+.bigCanvas{width:100%;height:70vh;flex:1 1 auto}
+#overlay .legend{font-size:13px;line-height:1.3;display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;padding-left:0}
+#overlay .legend li{list-style:none;display:flex;align-items:center;gap:6px;flex:1 1 45%;white-space:nowrap;min-width:220px}
+#overlay .legend .sw{width:14px;height:14px;border-radius:4px;display:inline-block}
+
+/* Extra inputs – smaller heading and compact collapsed strip */
+#extraCard .panelHead h4{margin:0;font-size:14px;font-weight:700;color:#334155}
+#extraCard{padding:10px 12px}
+#extraCard.collapsed{padding:6px 10px}
+#extraCard .panelHead .toggleBtn{padding:2px 8px;font-size:11px;border-radius:8px}
+
+
+/* ===== Flight landing highlight in Outputs ===== */
+.hitFlash{position:relative;animation:flashPulse 900ms ease-out;will-change:transform, background-color}
+.hitFlash::after{
+  content:"";position:absolute;left:50%;top:50%;width:10px;height:10px;border-radius:999px;
+  transform:translate(-50%,-50%);pointer-events:none;
+  box-shadow:0 0 0 0 rgba(234,179,8,.55); /* amber-ish */
+  animation:ripple 900ms ease-out
+}
+@keyframes flashPulse{
+  0%{background-color:rgba(250,204,21,.25);transform:scale(1)}
+  35%{background-color:rgba(250,204,21,.45);transform:scale(1.045)}
+  100%{background-color:transparent;transform:scale(1)}
+}
+@keyframes ripple{
+  0%{box-shadow:0 0 0 0 rgba(234,179,8,.55)}
+  100%{box-shadow:0 0 0 22px rgba(234,179,8,0)}
+}
+
+
+#flightOverlay .ghostLbl{font:600 14px/1.2 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  fill:#111; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round}
+
+
+/* ===== Impact emphasis (boom + shake) ===== */
+@keyframes impactBoom {
+  0%   { background:rgba(250,204,21,.35); transform:scale(1.00); }
+  40%  { background:rgba(244,114,182,.45); transform:scale(1.085); } /* pink-ish pop */
+  70%  { background:rgba(251,191,36,.40); transform:scale(1.02); }
+  100% { background:transparent; transform:scale(1.00); }
+}
+@keyframes impactShake {
+  0%,100% { transform: translateX(0) }
+  15% { transform: translateX(-2px) }
+  30% { transform: translateX(2px) }
+  45% { transform: translateX(-2px) }
+  60% { transform: translateX(2px) }
+  75% { transform: translateX(-1px) }
+  90% { transform: translateX(1px) }
+}
+.impactBoom{ animation: impactBoom 600ms ease-out; border-radius:6px }
+.impactShake{ animation: impactShake 420ms ease-in-out }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo" id="logoBox" title="DPU ENERGY">
+        <img id="logoImg" alt="DPU ENERGY logo" style="display:none">
+        <div class="fallback" id="logoFallback">
+          <svg viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="12" fill="#c7d6ea"/><path d="M16 20h20a12 12 0 010 24H16V20z" fill="var(--col-principal)"/><circle cx="44" cy="24" r="6" fill="var(--col-principal)"/></svg>
+        </div>
+      </div>
+      <div>
+        <h1>Interaktivní vysvětlení metody EPC</h1>
+        <div class="muted">Rozhovor starosty města se zástupcem DPU ENERGY</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn small" id="shareBtn">Sdílet</button>
+      <button class="btn small" id="qrBtn">QR</button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="layout">
+      <!-- LEVÝ SLOUPEC -->
+      <div>
+        <div class="card" id="chatCard">
+          <div id="chatNotice" class="chatNotice info">
+            <div class="msg" id="chatNoticeMsg">Došlo ke změně vstupních hodnot, která má vliv na scénář rozhovoru.</div>
+            <div class="chatNotice-actions"><button class="btn small" id="restartBtnInline">Znovu zahájit rozhovor ↺</button><span class="sep"> &nbsp;nebo jen&nbsp; </span><button class="btn small" id="applyBtnInline">Aktualizovat hodnoty v rozhovoru</button></div>
+          </div>
+          <h2 class="title">Rozhovor</h2>
+          <div class="hint">Zvolte vstupní hodnoty pro váš projekt a rozhovor zahajte kliknutím na bublinu starosty.</div>
+          <div class="dialog" id="feed"></div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" id="restartBtn">Znovu zahájit rozhovor ↺</button>
+          </div>
+        </div>
+
+        <!-- Srovnání -->
+        <div class="compareWrap">
+          <div class="card collapsible" id="compareCard">
+            <div class="panelHead"><h3>Srovnání: EPC vs bez EPC</h3><button class="toggleBtn" type="button"><span class="arrow">▾</span><span class="txt">Sbalit</span></button></div>
+            <div class="controlsRow">
+              <div class="group"><label>Úroková sazba investičního úvěru</label><input id="in_rinv" type="number" step="0.01" value="3.00"/><span class="unit">% p.a.</span></div>
+              <div class="group"><label>Délka splácení investičního úvěru</label><input id="in_ninv" type="number" step="1" value="10"/><span class="unit">let</span></div>
+            </div>
+            <div class="controlsRow">
+              <div class="group"><label><input id="chk_bon" type="checkbox" checked style="margin-right:6px"/>Bonifikace 5 % dotace za využití metody EPC</label></div>
+            </div>
+            <table class="compare" id="cmpTable">
+              <thead><tr><th>Ukazatel</th><th class="col-slim">A</th><th class="col-slim">B</th><th class="col-slim">C</th><th class="col-slim">D</th></tr></thead>
+              <tbody></tbody><tfoot><tr><td colspan="5" id="cmpNote"></td></tr></tfoot>
+            </table>
+            <div class="cmpLegend" id="cmpLegend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRAVÝ SLOUPEC -->
+      <div class="sidebar">
+        <div class="card">
+          <div class="panelHead"><h3>Vstupy</h3></div>
+          <div id="inputs">
+            <div class="input"><label>Investice (= způsobilé výdaje)</label><div class="row"><input id="in_inv" type="number" step="1" value="170"/><span class="unit">mil. Kč</span></div></div>
+            <div class="input"><label>Stávající náklady na energie</label><div class="row"><input id="in_e0" type="number" step="0.01" value="8.5"/><span class="unit">mil. Kč/rok</span></div></div>
+          </div>
+          <div class="card collapsible" id="extraCard" style="margin-top:8px">
+  <div class="panelHead"><h4>Další vstupy</h4><button class="toggleBtn" type="button"><span class="arrow">▾</span><span class="txt">Sbalit</span></button></div>
+  <div class="hint">Volitelně můžete upravit i tyto vstupy.</div>
+  <div id="extraInputs" class="grid2">
+    <div class="input"><label>Výše dotace</label><div class="row"><input id="in_dot" type="number" step="0.01" value="90"/><span class="unit">mil. Kč</span></div></div>
+    <div class="input"><label>Roční úspora</label><div class="row"><input id="in_u" type="number" step="0.01" value="5.1"/><span class="unit">mil. Kč/rok</span></div></div>
+    <div class="input"><label>Doba splácení</label><div class="row"><input id="in_n" type="number" step="1" value="12"/><span class="unit">let</span></div></div>
+    <div class="input"><label>Úroková sazba</label><div class="row"><input id="in_r" type="number" step="0.01" value="5.00"/><span class="unit">% p.a.</span></div></div>
+  </div>
+</div>
+        </div>
+
+        <div class="card">
+          <div class="panelHead"><h3>Výstupy</h3></div>
+          <div id="calcDiagram">
+            <div class="grid">
+              <div class="node hidden" id="k_inv"><div class="k">Investice (= způsobilé výdaje)</div><span class="hintq" data-why="inv" title="Kde se to vzalo?">?</span><div class="v" data-bind="inv"></div></div>
+              <div class="node hidden" id="k_u"><div class="k">Roční úspora</div><span class="hintq" data-why="u" title="Kde se to vzalo?">?</span><div class="v" data-bind="u"></div></div>
+              <div class="node hidden" id="k_n"><div class="k">Doba splácení</div><span class="hintq" data-why="n" title="Kde se to vzalo?">?</span><div class="v" data-bind="n"></div></div>
+              <div class="node hidden" id="k_Smax"><div class="k">Celková kumulovaná úspora</div><span class="hintq" data-why="Smax" title="Kde se to vzalo?">?</span><div class="v" data-bind="Smax"></div><div class="eq">= Počet let <span class="badge" data-bind="n"></span> × Roční úspora <span class="badge" data-bind="u"></span></div></div>
+              <div class="node hidden" id="k_S"><div class="k">Skutečná výše splátek z úspor</div><span class="hintq" data-why="S" title="Kde se to vzalo?">?</span><div class="v" data-bind="S"></div><div class="eq">= Jistina <span class="badge" data-bind="pv"></span> + Úroky <span class="badge" data-bind="I"></span></div></div>
+              <div class="node hidden" id="k_r"><div class="k">Úroková sazba</div><span class="hintq" data-why="r" title="Kde se to vzalo?">?</span><div class="v" data-bind="r"></div></div>
+              <div class="node hidden" id="k_pv"><div class="k">Jistina ze splátek (dodavatelský úvěr)</div><span class="hintq" data-why="pv" title="Kde se to vzalo?">?</span><div class="v" data-bind="pv"></div><div class="eq">= Výše investice krytá úsporou (splátky bez úroků)</div></div>
+              <div class="node hidden" id="k_I"><div class="k">Úroky ze splátek (dodavatelský úvěr)</div><span class="hintq" data-why="I" title="Kde se to vzalo?">?</span><div class="v" data-bind="I"></div></div>
+              <div class="node hidden" id="k_total"><div class="k">Celkové náklady (EPC)</div><span class="hintq" data-why="total" title="Kde se to vzalo?">?</span><div class="v" data-bind="totalEPC"></div><div class="eq">= Investice − Dotace + Úroky dod. + (příp.) Úroky inv.</div></div>
+              <div class="node hidden" id="k_kuhr"><div class="k">Úhrada způsobilých výdajů pro dotaci</div><span class="hintq" data-why="kuhr" title="Kde se to vzalo?">?</span><div class="v" data-bind="kuhr"></div><div class="eq">= Způsobilé výdaje − Jistina ze splátek</div></div>
+              <div class="node hidden" id="k_prekuv"><div class="k">Výše překlenovacího úvěru</div><span class="hintq" data-why="prek" title="Kde se to vzalo?">?</span><div class="v" data-bind="prek"></div><div class="eq">= Úhrada způs. výdajů pro dotaci − Čistá okamžitá spoluúčast</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card collapsible" id="graphsCard">
+          <div class="panelHead"><h3>Grafy</h3><button class="toggleBtn" type="button"><span class="arrow">▾</span><span class="txt">Sbalit</span></button></div>
+          <div class="canvasWrap" data-big="pie" title="Kliknutím zvětšit">
+            <h5>Skladba ceny zakázky</h5>
+            <div class="pieFlex">
+              <canvas id="pie"></canvas>
+              <ul id="pieLegend" class="legend"></ul>
+            </div>
+          </div>
+          <div class="canvasWrap" data-big="bars" title="Kliknutím zvětšit">
+            <h5>Grafický přehled nákladů v čase od roku 0 (realizace) do 1. roku po skončení garance úspor</h5>
+            <canvas id="bars"></canvas>
+            <ul class="legend" id="barsLegend" style="margin-top:6px"></ul>
+            <div class="noteUnder" id="barsNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer><span style="margin-left:auto">© 2025 DPU ENERGY s.r.o.</span></footer>
+  </div>
+</div>
+
+<div id="overlay"><div class="box"><button class="close" aria-label="Zavřít">×</button><div id="ov-dyn"></div></div></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+(function(){
+  const qs=(s,r=document)=>r.querySelector(s), qsa=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const on=(el,ev,fn)=>el && el.addEventListener(ev,fn);
+  const EPS=1e-9;
+  const getCSS=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const COL={ principal:getCSS('--col-principal'), immediate:getCSS('--col-immediate'), interest:getCSS('--col-interest'), subsidy:getCSS('--col-subsidy'), savings:getCSS('--col-savings'), cost:getCSS('--col-cost') };
+
+  const fmt2=(x)=>{ const n=Math.round((+x||0)*100)/100; return n.toFixed(2).toString().replace('.',','); };
+  const nb=(x)=>fmt2(x).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+
+  function tryLoadLogo(){
+    const img=qs('#logoImg'); const fallback=qs('#logoFallback'); const box=qs('#logoBox'); if(!img||!box) return;
+    const candidates=['dpu_energy_logo.svg','dpu_energy_logo.png','dpu_energy_logo.jpg','dpu_energy_logo.webp'];
+    let i=0; (function next(){ if(i>=candidates.length) return; const url=candidates[i++]; const probe=new Image(); probe.onload=()=>{ img.src=url; img.style.display='block'; if(fallback&&fallback.parentNode) fallback.parentNode.removeChild(fallback); box.classList.add('frameless'); }; probe.onerror=next; probe.src=url; })();
+  }
+
+  function plainTextLen(html){ const tmp=document.createElement('div'); tmp.innerHTML=html||''; return (tmp.textContent||'').trim().length; }
+  function realisticDelay(html){ const L=plainTextLen(html); const base=450; const per=28; let t=base+per*L; t+=(html.match(/[\.!?]/g)||[]).length*120; return Math.max(600, Math.min(3200, t)); }
+
+  /* === Vstupy + výpočty === */
+  const PV=(A,r,n)=> r<=0 ? A*n : A*(1-Math.pow(1+r,-n))/r;
+  const Afrom=(PVv,r,n)=> n<=0?0 : (r<=0?PVv/n : PVv*r/(1-Math.pow(1+r,-n)));
+
+  function getNum(id){ const el=qs(id); const v=(el && el.value!=='')? +el.value : null; return isNaN(v)? null : v; }
+
+  function compute(){
+    const inv = getNum('#in_inv') ?? 170;
+    const e0  = getNum('#in_e0') ?? 8.5;
+    const dot = getNum('#in_dot') ?? +(inv*(90/170)).toFixed(2);
+    const u   = getNum('#in_u') ?? +(e0*0.60).toFixed(2);
+    const n   = getNum('#in_n') ?? 12; // vždy celé roky
+    const rPa = (getNum('#in_r') ?? 5)/100;
+
+    const spol=Math.max(inv-dot,0);
+    const PVcap=PV(u,rPa,n);
+    const pv=Math.min(PVcap,spol);
+    const A=(pv<PVcap)?Afrom(pv,rPa,n):u; // skutečná splátka z úspor
+    const S=A*n; // součet splátek
+    const I=Math.max(S-pv,0);
+    const kuhr=Math.max(inv-pv,0); // nutné krátkodobě uhradit kvůli dotaci
+    const okam=Math.max(kuhr-dot,0); // čistá okamžitá spoluúčast
+    const prek=Math.max(kuhr-okam,0); // výše překlenovacího úvěru (logicky ~ dotace)
+    const eAfter=Math.max(e0-u,0);
+    const Smax=u*n;
+
+    let sched=[], bal=pv;
+    for(let y=1;y<=n;y++){
+      const intr=(rPa>0)?bal*rPa:0;
+      let princ=Math.max(A-intr,0); if(princ>bal) princ=bal;
+      sched.push({y,interest:intr,principal:princ});
+      bal=Math.max(bal-princ,0);
+    }
+
+    return {inv,e0,dot,u,r:rPa*100,n,spol,pv,A,S,I,kuhr,okam,prek,eAfter,Smax,sched};
+  }
+
+  function setBind(key, val, unit=''){
+    let html;
+    if(unit==='let'){
+      html = `<b>${Math.round(val)} ${unit}</b>`;
+    }else if(unit){
+      html = `<b>${nb(val)} ${unit}</b>`;
+    }else{
+      html = `<b>${nb(val)}</b>`;
+    }
+    qsa(`[data-bind="${key}"]`).forEach(el=>{ el.innerHTML = html; });
+  }
+
+  /* === Grafy === */
+  const pie=qs('#pie'), pctx=pie.getContext('2d');
+  const bars=qs('#bars'), bctx=bars.getContext('2d');
+  function fitCanvas(c){ const dpr=window.devicePixelRatio||1, w=c.clientWidth, h=c.clientHeight; if(!w||!h) return; c.width=Math.round(w*dpr); c.height=Math.round(h*dpr); c.getContext('2d').setTransform(dpr,0,0,dpr,0,0); }
+  function textColorFor(bg){ const c=bg.replace('#',''); if(c.length!==6) return '#111827'; const r=parseInt(c.substr(0,2),16), g=parseInt(c.substr(2,2),16), b=parseInt(c.substr(4,2),16); const y=(r*299+g*587+b*114)/1000; return y<160?'#ffffff':'#111827'; }
+
+  function drawPieData(v, canvas=pie, ctx=pctx){
+    fitCanvas(canvas); const W=canvas.clientWidth,H=canvas.clientHeight,cx=W/2,cy=H/2,R=Math.min(W,H)*0.46;
+    ctx.clearRect(0,0,W,H);
+    const parts=[
+      {label:'Úrok ze splátek z úspor', val:v.I, col:COL.interest},
+      {label:'Jistina ze splátek z úspor', val:v.pv, col:COL.principal},
+      {label:'Okamžitá spoluúčast města', val:Math.max(v.spol - v.pv, 0), col:COL.immediate},
+      {label:'Dotace', val:v.dot, col:COL.subsidy}
+    ].filter(p=>p.val>EPS);
+    const sum=v.inv+v.I; if(sum<=EPS||parts.length===0) return;
+    let start=-Math.PI/2;
+    parts.forEach(p=>{ const ang=2*Math.PI*(p.val/sum), mid=start+ang/2;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle=p.col; ctx.arc(cx,cy,R,start,start+ang); ctx.closePath(); ctx.fill();
+      const prc=(p.val/sum*100), rTxt=R*0.62, tx=cx+rTxt*Math.cos(mid), ty=cy+rTxt*Math.sin(mid);
+      ctx.fillStyle=textColorFor(p.col); ctx.font='13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(nb(prc)+' %', tx, ty); start+=ang;
+    });
+    const legend=[
+      {label:'Dotace', val:v.dot, unit:' mil. Kč vč. DPH', col:COL.subsidy},
+      {label:'Jistina ze splátek z úspor', val:v.pv, unit:' mil. Kč vč. DPH', col:COL.principal},
+      {label:'Úrok ze splátek z úspor', val:v.I, unit:' mil. Kč', col:COL.interest},
+      {label:'Okamžitá spoluúčast města', val:Math.max(v.spol - v.pv, 0), unit:' mil. Kč vč. DPH', col:COL.immediate}
+    ].filter(it=>(it.val||0)>EPS);
+    const ul=qs('#pieLegend'); if(ul){ ul.innerHTML=''; legend.forEach(it=>{ const li=document.createElement('li'); li.innerHTML=`<span class="sw" style="background:${it.col}"></span><span>${nb(it.val)}${it.unit} – ${it.label}</span>`; ul.appendChild(li); }); }
+  }
+
+  function drawBarsData(v, canvas=bars, ctx=bctx, opts={labels:false, overlay:false}){
+    fitCanvas(canvas); const W=canvas.clientWidth,H=canvas.clientHeight;
+    ctx.clearRect(0,0,W,H);
+    const years=[0,...Array.from({length:v.n},(_,i)=>i+1), v.n+1];
+    const left=8,bottom=32,top=10,right=10,chartW=W-left-right,chartH=H-top-bottom;
+    const usporaAfter=A=>Math.max(v.u - A,0);
+    const yVals=[]; yVals.push(v.e0 + Math.max(v.okam,0)); for(let i=1;i<=v.n;i++){ const s=v.sched[i-1]||{interest:0,principal:0}; yVals.push(v.eAfter + s.interest + s.principal + usporaAfter(v.A)); } yVals.push(v.eAfter + v.u);
+    const limit = 2*v.e0; const dataMax=Math.max(...yVals); const maxY=Math.min(dataMax, limit);
+    const step=(chartW/years.length), gapRatio=0.05, bw=step*(1-gapRatio);
+    ctx.font='12px system-ui'; ctx.textAlign='center';
+    const truncatedYear0 = (v.e0 + Math.max(v.okam,0)) > limit + 1e-9;
+    years.forEach((yr,i)=>{
+      const x=left + i*step + (step-bw)/2; const scale=chartH/(maxY*1.05); let base=H-bottom;
+      function drawSeg(value,color){ if(value<=0) return; let h=value*scale; const maxH=base-top; if(h>maxH) h=maxH; ctx.fillStyle=color; ctx.fillRect(x,base-h,bw,h);
+        if(opts.labels && h>14){ const txt=nb(value)+' mil. Kč'; ctx.fillStyle=textColorFor(color); ctx.fillText(txt, x+bw/2, base-h/2+4); } base-=h; }
+      if(yr===0){ drawSeg(v.e0, COL.cost); drawSeg(Math.max(v.okam,0), COL.immediate); }
+      else if(yr<=v.n){ const s=v.sched[yr-1]||{interest:0,principal:0}; drawSeg(v.eAfter, COL.cost); drawSeg(s.principal, COL.principal); drawSeg(s.interest, COL.interest); drawSeg(usporaAfter(v.A), COL.savings); }
+      else { drawSeg(v.eAfter, COL.cost); drawSeg(v.u, COL.savings); }
+      ctx.fillStyle='#334155'; const xlabel = opts.overlay ? ('rok '+yr) : (''+yr); ctx.fillText(xlabel, x+bw/2, H-10);
+    });
+    const noteText='Sloupec okamžité spoluúčasti není zobrazen kompletní, aby byla zachována čitelnost grafu.';
+    (opts.overlay?qs('#bigBarsNote'):qs('#barsNote')).textContent = truncatedYear0 ? noteText : '';
+  }
+
+  /* === Srovnání tabulky === */
+  function computeVariants(){
+    const v=compute(); const rinv=+qs('#in_rinv').value/100, ninv=+qs('#in_ninv').value; const bon=qs('#chk_bon').checked;
+    const Afrom2=(PVv,r,n)=> n<=0?0 : (r<=0?PVv/n : PVv*r/(1-Math.pow(1+r,-n)));
+    const loan=(principal)=>{ if(principal<=0) return {A:0,S:0,I:0}; const A=Afrom2(principal,rinv,ninv); const S=A*ninv; const I=Math.max(S-principal,0); return {A,S,I}; };
+    const rate_epc=v.dot/v.inv, rate_no=Math.max((bon?rate_epc-0.05:rate_epc),0);
+    const dot_epc=v.dot, dot_no=+(v.inv*rate_no).toFixed(2);
+    const spol_epc=v.spol, spol_no=Math.max(v.inv-dot_no,0);
+    const loanA=loan(0), loanB=loan(Math.max(spol_epc - v.pv,0)), loanC=loan(0), loanD=loan(spol_no);
+    const totalA=v.inv-dot_epc+v.I+loanA.I, totalB=v.inv-dot_epc+v.I+loanB.I, totalC=v.inv-dot_no+0+loanC.I, totalD=v.inv-dot_no+0+loanD.I;
+    return {params:{bon}, dot:{A:dot_epc,B:dot_epc,C:dot_no,D:dot_no}, okam:{A:Math.max(spol_epc - v.pv, 0), B:0, C:spol_no, D:0}, i_dod:{A:v.I,B:v.I,C:0,D:0}, i_inv:{A:loanA.I,B:loanB.I,C:loanC.I,D:loanD.I}, dluh_sluzba_rocne:{A:0,B:loanB.A,C:0,D:loanD.A}, dluh_sluzba_soucet:{A:0,B:loanB.S,C:0,D:loanD.S}, total:{A:totalA,B:totalB,C:totalC,D:totalD} };
+  }
+  function renderComparison(){
+    const v=computeVariants(); const t=qs('#cmpTable tbody'); t.innerHTML='';
+    function row(name, fmtfn){ const tr=document.createElement('tr'); tr.innerHTML='<td>'+name+'</td>'+['A','B','C','D'].map(k=>'<td>'+fmtfn(v,k)+'</td>').join(''); t.appendChild(tr); }
+    row('Dotace', (obj,k)=> nb(obj.dot[k])+' mil. Kč');
+    row('Okamžitá spoluúčast města', (obj,k)=> nb(obj.okam[k])+' mil. Kč');
+    row('Úroky z dodavatelského úvěru', (obj,k)=> nb(obj.i_dod[k])+' mil. Kč');
+    row('Úroky z investičního úvěru', (obj,k)=> nb(obj.i_inv[k])+' mil. Kč');
+    row('Dluhová služba (ročně)', (obj,k)=> nb(obj.dluh_sluzba_rocne[k])+' mil. Kč');
+    row('Dluhová služba (součet)', (obj,k)=> nb(obj.dluh_sluzba_soucet[k])+' mil. Kč');
+    row('Celkové náklady realizace', (obj,k)=> nb(obj.total[k])+' mil. Kč');
+    qs('#cmpNote').innerHTML = v.params.bon ? 'Poznámka: v případě nevyužití metody EPC je dotace snížena o 5 procentních bodů.' : '';
+    qs('#cmpLegend').innerHTML = [
+      ['A','EPC - město využívá dodavatelské financování z dosažených úspor a zbylou spoluúčast hradí z rozpočtu'],
+      ['B','EPC - město využívá dodavatelské financování z dosažených úspor a zbylou spoluúčast si vyřizuje vlastní investiční úvěr'],
+      ['C','bez EPC - město hradí celou spoluúčast z rozpočtu'],
+      ['D','bez EPC - město si vyřizuje na celou spoluúčast vlastní investiční úvěr']
+    ].map(([k,txt])=>`<div class="row"><span class="tag">${k}</span>${txt}</div>`).join('');
+  }
+
+  /* === Chat === */
+  const feed=qs('#feed');
+  function addBubble(role, html, {interactive=false, typing=false} = {}) {
+    const b=document.createElement('div');
+    b.className='bubble '+(role==='m'?'from-mayor':'from-firm')+(interactive?' interactive':'');
+    b.innerHTML=`<div class="avatar ${role==='m'?'m':'d'}">${role==='m'?'S':'D'}</div>
+                 <div class="text"><div class="name">${role==='m'?'Starosta':'Poradce DPU'}</div>${typing?'<span class="dots"></span>':'<div class="content">'+html+'</div>'}</div>`;
+    if(typing) b.classList.add('typing');
+    feed.appendChild(b); feed.scrollTop=feed.scrollHeight; return b;
+  }
+  function dpuTypesThenP(html, revealKeys){
+    const t=addBubble('d','',{typing:true});
+    const wait = realisticDelay(html);
+    setTimeout(()=>{
+      t.classList.remove('typing'); const txt=t.querySelector('.text');
+      if(txt){ txt.innerHTML='<div class="name">Poradce DPU</div><div class="content">'+html+'</div>'; }
+      feed.scrollTop=feed.scrollHeight;
+      if(revealKeys && revealKeys.length){ setTimeout(()=>reveal(revealKeys), 250); }
+    }, wait);
+  }
+
+  function flyToOutputs(keys){
+    return new Promise((resolve)=>{
+      const keyToNodeId={inv:'k_inv', u:'k_u', n:'k_n', Smax:'k_Smax', S:'k_S', r:'k_r', I:'k_I', pv:'k_pv', kuhr:'k_kuhr', prek:'k_prekuv', okam:'k_kuhr'};
+      const spans = Array.from(feed.querySelectorAll('.bubble.from-firm .live')).filter(el=> keys.includes(el.dataset.k));
+      if(spans.length===0){ setTimeout(()=>{ resolve(); }, 920); return; }
+      let remaining=spans.length;
+      spans.forEach(sp=>{
+        const k=sp.dataset.k; const targetId=keyToNodeId[k]; const target=targetId?document.querySelector(targetId):null;
+        const startRect=sp.getBoundingClientRect();
+        const endRect= target ? target.getBoundingClientRect() : startRect;
+        const fly=document.createElement('div'); const __sx=startRect.left+window.scrollX+startRect.width/2; const __sy=startRect.top+window.scrollY+startRect.height/2; const __tx=endRect.left+window.scrollX+endRect.width/2; const __ty=endRect.top+window.scrollY+endRect.height/2; try{ showFlightPath(__sx,__sy,__tx,__ty,2000, sp.textContent); }catch(_e){}
+        fly.className='flyBadge';
+        fly.textContent=sp.textContent+(k==='n'?' let': (k==='u'?' mil. Kč/rok': (k==='r'?' % p.a.':' mil. Kč')));
+        const flyStyle=fly.style; flyStyle.position='fixed'; flyStyle.left=startRect.left+'px'; flyStyle.zIndex='10000'; flyStyle.background='#fde047'; flyStyle.border='none'; flyStyle.borderRadius='9999px'; flyStyle.boxShadow='0 10px 20px rgba(0,0,0,.12), 0 3px 6px rgba(0,0,0,.18)'; flyStyle.padding='6px 12px'; flyStyle.font='700 14px system-ui'; flyStyle.color='#111827'; flyStyle.top=startRect.top+'px';
+        flyStyle.padding='6px 10px'; flyStyle.border='1px solid #cbd5e1'; flyStyle.borderRadius='999px'; flyStyle.background='#ffffff'; flyStyle.boxShadow='0 8px 22px rgba(2,6,23,.12)'; flyStyle.zIndex='9999'; flyStyle.font='600 13px system-ui'; flyStyle.color='#0f172a';
+        document.body.appendChild(fly);
+        const dx = (endRect.left + endRect.width*0.4) - startRect.left;
+        const dy = (endRect.top + 8) - startRect.top;
+        const scale = Math.max(Math.min((endRect.width*0.5)/Math.max(startRect.width,1), 1.1), .85);
+        try{
+
+          const __srcRect = fly.getBoundingClientRect();
+const __tgtRect = target ? target.getBoundingClientRect() : null;
+try{ if(target) target.dataset.prevText = target.textContent; }catch(_e){}
+const __labelTxt = (typeof fly.textContent==='string' && fly.textContent.trim()) ? fly.textContent.trim() : '';
+if(__tgtRect) showFlightPath(__srcRect.left+window.scrollX+__srcRect.width/2, __srcRect.top+window.scrollY+__srcRect.height/2, __tgtRect.left+window.scrollX+__tgtRect.width/2, __tgtRect.top+window.scrollY+__tgtRect.height/2, 2000, __labelTxt);
+
+        }catch(__e){}
+
+        fly.animate([
+{ transform:`translate(0px,0px) scale(1)`,  },
+          { transform:`translate(${dx}px,${dy}px) scale(${scale})`,  }
+], { duration:  2000, fill:'forwards', easing: 'cubic-bezier(.21, .6, .35, 1)' }).onfinish = ()=>{ try{ if(target){ target.classList.add('hitFlash'); const _rm=()=>{target.classList.remove('hitFlash'); target.removeEventListener('animationend', _rm);}; target.addEventListener('animationend', _rm, {once:true}); } }catch(e){} fly.remove();
+          if(--remaining===0) resolve();
+        };
+      });
+    });
+  }
+
+  function dpuTypesThenP(html, revealKeys){
+    return new Promise(resolve=>{
+      const t=addBubble('d','',{typing:true});
+      const wait = realisticDelay(html);
+      setTimeout(()=>{
+        t.classList.remove('typing'); const txt=t.querySelector('.text');
+        if(txt){ txt.innerHTML='<div class="name">Poradce DPU</div><div class="content">'+html+'</div>'; }
+        feed.scrollTop=feed.scrollHeight;
+        if(revealKeys && revealKeys.length){ flyToOutputs(revealKeys).then(()=>{ reveal(revealKeys); setTimeout(resolve, 120); }); } else { setTimeout(resolve, 120); }
+      }, wait);
+    });
+  }
+  function mayorSays(text){ addBubble('m', text, {}); }
+  function mayorTypesInteractive(text, onClick){
+    const t=addBubble('m','',{typing:true});
+    const wait = realisticDelay(text);
+    setTimeout(()=>{
+      t.remove();
+      const b=addBubble('m',text,{interactive:true});
+      const handler=()=>{ b.classList.remove('interactive'); b.removeEventListener('click', handler); onClick && onClick(); };
+      b.addEventListener('click', handler);
+    }, wait);
+  }
+
+  function renderChoicesWithTyping(promptText, choices){
+    const t=addBubble('m','',{typing:true}); setTimeout(()=>{ t.remove(); renderChoices(promptText,choices); }, realisticDelay(promptText));
+  }
+  function renderChoices(promptText, choices){
+    const wrap=document.createElement('div'); wrap.className='choicesWrap'; feed.appendChild(wrap);
+    const header=document.createElement('div'); header.className='choiceHeader'; header.textContent=promptText; wrap.appendChild(header);
+    choices.forEach((opt,i)=>{
+      const o=document.createElement('div'); o.className='bubble choice';
+      o.innerHTML=`<div class="avatar m">S</div><div class="text"><div class="name">Starosta</div><div class="chip">Varianta ${i+1}</div><div class="content">${opt.label}</div></div>`;
+      o.addEventListener('click',()=>{
+        while(wrap.nextSibling) wrap.parentNode.removeChild(wrap.nextSibling);
+        wrap.innerHTML='';
+        const chosen=document.createElement('div'); chosen.className='bubble from-mayor';
+        chosen.innerHTML=`<div class="avatar m">S</div><div class="text"><div class="name">Starosta</div><div class="content">${opt.label}</div><a class="editChoice"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v4l3-3M4 11a8 8 0 1 1 0 2" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> <span>Změnit volbu</span></a></div>`;
+        wrap.appendChild(chosen);
+        chosen.querySelector('.editChoice').addEventListener('click',()=>{ while(wrap.nextSibling) wrap.parentNode.removeChild(wrap.nextSibling); wrap.remove(); renderChoicesWithTyping(promptText, choices); });
+        const res = (typeof opt.onChoose==='function') ? opt.onChoose() : null;
+        if(!res) return;
+        dpuTypesThenP(res.reply || res, res.reveal || []);
+        setTimeout(()=>{ if(res.ends){ endConversation(); } else if(typeof res.then==='function'){ res.then(); } }, realisticDelay(res.reply||''));
+      });
+      wrap.appendChild(o);
+    });
+    feed.scrollTop=feed.scrollHeight;
+  }
+
+  /* === Repliky === */
+  const L = {
+    intro: 'Náklady na energie nám každým rokem rostou a tvoří významnou část rozpočtu města. Naše budovy se navíc dostávají na hranu předpokládané životnosti a přestávají vyhovovat standardům dnešní doby.',
+    dpu1:  (v)=>`Rozumím. Tohle je dnes častý případ. Z předběžné analýzy nám vychází, že úsporná opatření mohou vygenerovat úsporu nákladů na energie ve výši až <b><span class="live" data-k="u">${nb(v.u)}</span> mil. Kč/rok</b>.`,
+    ask1:  'O jaká se jedná opatření? A jaká je výše investice na jejich realizaci?',
+    dpu2:  (v)=>`Jedná se o komplexní soubor opatření. Součástí řešení je snížení tepelných ztrát zateplením nebo výměnou oken. Na to navazují technologická opatření, jako výměna zdroje tepla, moderní systém měření a regulace, výměna osvětlení či instalace fotovoltaické elektrárny. Dle našeho předběžného odhadu činí investice přibližně <b><span class="live" data-k="inv">${nb(v.inv)}</span> mil. Kč vč. DPH</b>.`,
+    ch1a:  'Taková částka je pro náš rozpočet zcela přijatelná.',
+    ch1aReply: 'Skvělá zpráva, vaše město je na tom finančně opravdu dobře. V takovém případě pro vás metoda EPC nedává smysl. Pokud máte zájem, pojďme zahájit přípravu energeticky úsporného projektu, který bude možné realizovat bez využití této metody.',
+    ch1b:  'Náš rozpočet je zatížený řadou jiných investičních akcí a alokovat takovou částku si v současnosti nemůže dovolit.',
+    ch1bReply: (v)=>`To je velmi častý případ, jedná se o nemalé investiční prostředky. Existuje možnost využít financování z dostupných dotačních titulů. Pro zjednodušení uvažujme, že byste mohli získat dotaci ve výši <b><span class="live" data-k="dot">${nb(v.dot)}</span> mil. Kč</b>. Spoluúčast města na této investici by pak činila <b><span class="live" data-k="spol">${nb(v.spol)}</span> mil. Kč</b>.`,
+    ch2a:  (v)=>`Taková částka je pro nás rozpočet přijatelná.`,
+    ch2aReply: 'Skvělá zpráva, vaše město je na tom finančně opravdu dobře. V takovém případě pro vás metoda EPC nedává smysl. Pokud máte zájem, pojďme zahájit přípravu energeticky úsporného projektu, který bude možné realizovat bez využití této metody.',
+    ch2b:  (v)=>`Ani takovou částku bohužel náš rozpočet momentálně nezvládne.`,
+    ch2bIntro: 'To je pochopitelné a také velmi časté. Pořád to pro vás nemusí být konečná. Je tu možnost elegantně využít úspory nákladů na energie, kterou zamýšlený projekt vygeneruje.',
+    ask2:  'To zní opravdu zajímavě. Jak toho lze využít?',
+    dpu3:  'Již řadu let existuje metoda zkráceně nazývaná jako EPC. Tato metoda spočívá ve smluvní garanci za dosažení úspory nákladů na energie. Tyto uspořené prostředky pak můžete přímo využít na splácení investice.',
+    ask3:  'Takže mám vždy jistotu, že úspory dosáhnu? Jak to funguje?',
+    dpu4:  (v)=>`Přesně tak. Pokud úspory není dosaženo, dodavatel je povinen doplatit rozdíl. A teď k samotnému financování. Abychom mohli vyčíslit, jaké prostředky vám financování z úspor přinese, musíme si nejprve vyčíslit samotnou úsporu. Ta činí <b><span class="live" data-k="u">${nb(v.u)}</span> mil. Kč/rok</b>.`,
+    ask4:  (v)=>`Aha, takže každý rok mohu využít <b><span class="live" data-k="u">${nb(v.u)}</span> mil. Kč</b> na splácení investice.`,
+    dpu5A: (v,baseS)=>`Za ${v.n} let by to bylo <b><span class="live" data-k="Smax">${nb(baseS)}</span> mil. Kč</b>, ale to převyšuje spoluúčast. Splátky kryté z úspor tedy činí <b><span class="live" data-k="spol">${nb(v.spol)}</span> mil. Kč</b>.`,
+    dpu5B: (v,baseS)=>`Tohle je častá a naprosto logická domněnka. Pojďme si to uvést na pravou míru. Poskytovatelem financování je buď samotný zhotovitel, případně banka, která za předem stanovených podmínek odkupuje od zhotovitele pohledávku. Ať tak, nebo tak, následné splátky se skládají z jistiny a úroku. A jak si ukážeme, úrok tvoří s ohledem na délku splácení podstatnou část splátek. Součet splátek může za ${v.n} let činit <b><span class="live" data-k="Smax">${nb(baseS)}</span> mil. Kč</b>.`,
+    ask5:  'Aha, to je opravdu důležitá informace. O úroku jsem v souvislosti s EPC ještě neslyšel. Jaká bývá jeho standardní výše?',
+    dpu6:  (v)=>`Při <b><span class="live" data-k="r">${(Math.round(v.r*100)/100).toFixed(2).replace('.',',')}</span> % p.a.</b> vychází úroky za <b><span class="live" data-k="n">${v.n}</span> let</b> zhruba <b><span class="live" data-k="I">${nb(v.I)}</span> mil. Kč</b>. Čistá jistina ze splátek: <b><span class="live" data-k="pv">${nb(v.pv)}</span> mil. Kč</b>.`,
+    ask6:  'Kolik peněz tedy budeme při využití metody EPC potřebovat na realizaci projektu?',
+    dpu7A: 'Garantované úspory plně pokrývají vaši nutnou spoluúčast k dotaci. EPC je pro vás přesně to pravé.',
+    dpu7B: (v)=>`Pokud od původní výše spoluúčasti při využití dotace (<b><span class="live" data-k="spol">${nb(v.spol)}</span> mil. Kč</b>) odečteme jistinu splátek z úspor (<b><span class="live" data-k="pv">${nb(v.pv)}</span> mil. Kč</b>), vychází nám <b><span class="live" data-k="okam">${nb(v.okam)}</span> mil. Kč</b> okamžité spoluúčasti. Bez této částky nelze projekt realizovat.`,
+    ask7:  (v)=>`To není špatné. Projekt za <b><span class="live" data-k="inv">${nb(v.inv)}</span> mil. Kč</b> s okamžitou spoluúčastí <b><span class="live" data-k="okam">${nb(v.okam)}</span> mil. Kč</b>.`,
+    dpu8:  'Ještě jedna důležitá věc k proplácení dotace a způsobilým výdajům…',
+    ask8:  'O co jde?',
+    dpu9:  'Dotace se proplácí proti způsobilým výdajům. Jistinu ze splátek kryje odkup pohledávky, zbytek musí město krátkodobě uhradit.',
+    ask9:  'Kolik dát do rozpočtu?',
+    dpu10: (v)=>`Investice <b><span class="live" data-k="inv">${nb(v.inv)}</span> mil. Kč</b> − jistina <b><span class="live" data-k="pv">${nb(v.pv)}</span> mil. Kč</b> = k úhradě <b><span class="live" data-k="kuhr">${nb(v.kuhr)}</span> mil. Kč</b>. Po dotaci <b><span class="live" data-k="dot">${nb(v.dot)}</span> mil. Kč</b> je čistá okamžitá spoluúčast <b><span class="live" data-k="okam">${nb(v.okam)}</span> mil. Kč</b>.`,
+    mayorEnd: 'To je jasné. Jdeme do toho!',
+    mayorEndAlt: 'To je skvělé. Pojďme začít připravovat EPC projekt!'
+  };
+
+  function updateLiveTextFrom(v){
+    qsa('.live').forEach(el=>{
+      const k=el.dataset.k; if(!k) return;
+      if(k==='r'){ el.textContent = (Math.round(v.r*100)/100).toFixed(2).replace('.',','); return; }
+      if(k==='n'){ el.textContent = v.n; return; }
+      const map={u:v.u, inv:v.inv, dot:v.dot, spol:v.spol, Smax:v.Smax, pv:v.pv, I:v.I, kuhr:v.kuhr, okam:v.okam};
+      if(k in map){ el.textContent = nb(map[k]); }
+    });
+  }
+
+  /* === Odhalování uzlů + tooltipy === */
+  function reveal(keys){
+    const v=compute();
+    const map={inv:['k_inv', ['inv','mil. Kč']], u:['k_u', ['u','mil. Kč/rok']], n:['k_n',['n','let']], Smax:['k_Smax',['Smax','mil. Kč']], S:['k_S',['S','mil. Kč']], r:['k_r',['r','% p.a.']], I:['k_I',['I','mil. Kč']], total:['k_total',['totalEPC','mil. Kč']], kuhr:['k_kuhr',['kuhr','mil. Kč']], okam:['k_kuhr',null], dot:['k_inv',null], pv:['k_pv',['pv','mil. Kč']], prek:['k_prekuv',['prek','mil. Kč']]};
+    (keys||[]).forEach(k=>{
+      const cfg=map[k]||[k,null];
+      const id=cfg[0]; const el=qs('#'+id); if(el) el.classList.remove('hidden');
+      if(cfg[1]) setBind(cfg[1][0], v[cfg[1][0]], cfg[1][1]);
+      setBind('inv',v.inv,'mil. Kč'); setBind('u',v.u,'mil. Kč/rok'); setBind('n',v.n,'let');
+      setBind('Smax',v.Smax,'mil. Kč'); setBind('S',v.S,'mil. Kč'); setBind('r',v.r,'% p.a.'); setBind('I',v.I,'mil. Kč'); setBind('totalEPC',v.inv - v.dot + v.I,'mil. Kč'); setBind('kuhr',v.kuhr,'mil. Kč'); setBind('pv',v.pv,'mil. Kč'); setBind('prek',v.prek,'mil. Kč');
+    });
+    drawPieData(v); drawBarsData(v); renderComparison();
+  }
+
+  function showTooltip(el, html){
+    hideTooltip(el);
+    const tip=document.createElement('div'); tip.className='tooltip'; tip.innerHTML=html; el.appendChild(tip);
+    setTimeout(()=>hideTooltip(el), 5500);
+  }
+  function hideTooltip(el){ const t=el.querySelector('.tooltip'); if(t) t.remove(); }
+
+  const WHY={
+    inv: ()=>{ const v=compute(); reveal(['inv']); return `Investice je <b>modelová</b>. Hodnota se zadává v horní části stránky. Aktuálně: <b>${nb(v.inv)} mil. Kč</b>.`; },
+    u: ()=>{ const v=compute(); reveal(['u']); return `Roční úspora je <b>modelová</b>. Výchozí nastavení je <b>60 %</b> ze stávajících nákladů na energie, dále ji můžete upravit. Aktuálně: <b>${nb(v.u)} mil. Kč/rok</b>.`; },
+    n: ()=>{ const v=compute(); reveal(['n']); const is12=(v.n===12); return `Doba splácení: ${is12? '<b>nejdelší možná doba splácení z úspor = 12 let</b>':'Zadává se nahoře, <b>doporučeno ≤ 12 let</b>'}. Aktuálně: <b>${v.n} let</b>.`; },
+    Smax: ()=>{ const v=compute(); reveal(['Smax']); return `Celková kumulovaná úspora = Počet let <b>${v.n} let</b> × Roční úspora <b>${nb(v.u)} mil. Kč/rok</b> = <b>${nb(v.Smax)} mil. Kč</b>.`; },
+    S: ()=>{ const v=compute(); reveal(['S','pv','I']); return `Skutečná výše splátek z úspor = <b>jistina</b> (<b>${nb(v.pv)} mil. Kč</b>) + <b>úroky</b> (<b>${nb(v.I)} mil. Kč</b>).`; },
+    r: ()=>{ const v=compute(); reveal(['r']); const note = (Math.abs(v.r-5)>1e-6)? 'Zadáno nahoře,':'Stanovena jako běžná,'; return `${note} <b>doporučeno 4–7 %</b>. Aktuálně: <b>${(Math.round(v.r*100)/100).toFixed(2).replace('.',',')} % p.a.</b>.`; },
+    I: ()=>{ const v=compute(); reveal(['I']); return `Úroky ze splátek (dodavatelský úvěr): <b>${nb(v.I)} mil. Kč</b>.`; },
+    pv: ()=>{ const v=compute(); reveal(['pv']); return `Jistina ze splátek (dodavatelský úvěr) – část investice <b>krytá úsporou</b> (splátky bez úroků). Aktuálně: <b>${nb(v.pv)} mil. Kč</b>.`; },
+    kuhr: ()=>{ const v=compute(); reveal(['kuhr']); return `Úhrada způsobilých výdajů pro dotaci = <b>způsobilé výdaje – jistina ze splátek</b>. Aktuálně: <b>${nb(v.kuhr)} mil. Kč</b>.`; },
+    prek: ()=>{ const v=compute(); reveal(['prek']); return `Výše překlenovacího úvěru = <b>úhrada způsobilých výdajů pro dotaci – čistá okamžitá spoluúčast</b>. Aktuálně: <b>${nb(v.prek)} mil. Kč</b>.`; },
+    total: ()=>{ const v=compute(); reveal(['total']); return `Celkové náklady (EPC) = Investice − Dotace + Úroky dodavatelského úvěru + (příp.) Úroky investičního úvěru. Aktuálně: <b>${nb(v.inv - v.dot + v.I)} mil. Kč</b>.`; }
+  };
+
+  /* === Scénář === */
+  let started=false, chatInvalidated=false;
+  let vChat=null; let appliedInputs={inv:null,e0:null}; let baseCat=0;
+
+  function addHintHandlers(){
+    qsa('.hintq').forEach(q=>{
+      on(q,'click', (e)=>{ const key=q.dataset.why; if(!key || !WHY[key]) return; showTooltip(q, WHY[key]()); e.stopPropagation(); });
+    });
+    document.addEventListener('click', ()=> qsa('.tooltip').forEach(t=>t.remove()));
+  }
+
+  function applyConversationValues(){ vChat = compute(); appliedInputs = {inv: +qs('#in_inv').value||170, e0:+qs('#in_e0').value||8.5}; baseCat = (vChat.okam <= (1e-9)) ? 0 : 1; updateLiveTextFrom(vChat); }
+
+  function refreshVisuals(){ const v=compute(); setBind('inv',v.inv,'mil. Kč'); setBind('u',v.u,'mil. Kč/rok'); setBind('n',v.n,'let'); setBind('Smax',v.Smax,'mil. Kč'); setBind('S',v.S,'mil. Kč'); setBind('r',v.r,'% p.a.'); setBind('I',v.I,'mil. Kč'); setBind('totalEPC',v.inv - v.dot + v.I,'mil. Kč'); setBind('kuhr',v.kuhr,'mil. Kč'); setBind('pv',v.pv,'mil. Kč'); setBind('prek',v.prek,'mil. Kč'); drawPieData(v); drawBarsData(v); renderComparison(); updateLiveTextFrom(vChat); }
+
+  function clearOutputsPanel(){ qsa('#calcDiagram .node').forEach(n=>{ if(!n.classList.contains('hidden')) n.classList.add('hidden'); }); qsa('#calcDiagram .v').forEach(v=>v.innerHTML=''); qsa('#pieLegend, #barsLegend').forEach(ul=>{ if(ul) ul.innerHTML=''; }); qs('#barsNote').textContent=''; }
+
+  function startConversation(){
+    applyConversationValues(); started=true; clearInvalidation();
+    // Úvod
+    mayorTypesInteractive(L.intro, async ()=>{
+      const v1=compute();
+      await dpuTypesThenP(L.dpu1(v1), ['u']);
+      // oprava pořadí: po kliknutí na L.ask1 vždy nejprve doběhne DPU, teprve pak starosta
+      mayorTypesInteractive(L.ask1, async ()=>{
+        const v2=compute(); const replyHtml=L.dpu2(v2);
+        await dpuTypesThenP(replyHtml, ['inv']);
+        renderChoicesWithTyping('Vyberte reakci', [
+          {label:L.ch1a, onChoose:()=>({reply:L.ch1aReply, ends:true})},
+          {label:L.ch1b, onChoose:()=>({reply:L.ch1bReply(compute()), then:continueV2})}
+        ]);
+      });
+    });
+  }
+
+  function continueV2(){
+    const v=compute();
+    renderChoicesWithTyping('Vyberte reakci', [
+      {label:L.ch2a(v), onChoose:()=>({reply:L.ch2aReply, ends:true})},
+      {label:L.ch2b(v), onChoose:()=>({reply:L.ch2bIntro, then:chainEPC})}
+    ]);
+  }
+
+  function chainEPC(){
+    mayorTypesInteractive(L.ask2, async ()=>{
+      await dpuTypesThenP(L.dpu3);
+      mayorTypesInteractive(L.ask3, async ()=>{
+        const v=compute(); await dpuTypesThenP(L.dpu4(v), ['u']);
+        mayorTypesInteractive(L.ask4(v), async ()=>{
+          const v2=compute(), baseS=v2.u*v2.n;
+          await dpuTypesThenP((baseS>v2.spol) ? L.dpu5A(v2,baseS) : L.dpu5B(v2,baseS), ['S','Smax','n']);
+          mayorTypesInteractive(L.ask5, async ()=>{
+            const v3=compute(); const baseS=v3.u*v3.n; await dpuTypesThenP((baseS < v3.spol) ? (function(){ const vv=compute(); const base=vv.u*vv.n; return `Úroková sazba se u EPC projektů pohybuje zpravidla mezi 4 a 7 % p.a. Abychom mohli vyčíslit jeho předpokládanou výši, musíme si stanovit výši splátek. Ta odpovídá násobku roční úspory a délky splácení, tedy <b><span class="live" data-k="u">${nb(vv.u)}</span> mil. Kč/rok</b> × <b><span class="live" data-k="n">${vv.n}</span> let</b> = <b><span class="live" data-k="Smax">${nb(base)}</span> mil. Kč</b>. Při úrokové sazbě <b><span class="live" data-k="r">${(Math.round(vv.r*100)/100).toFixed(2).replace('.',',')}</span> % p.a.</b> je výše úroků <b><span class="live" data-k="I">${nb(vv.I)}</span> mil. Kč</b>. Z vaší celkové spoluúčasti <b><span class="live" data-k="spol">${nb(vv.spol)}</span> mil. Kč</b> tak můžete hradit <b><span class="live" data-k="pv">${nb(vv.pv)}</span> mil. Kč</b>.`; })() : (function(){ const vv=compute(); const base=vv.u*vv.n; return `Úroková sazba se u EPC projektů pohybuje zpravidla mezi 4 a 7 % p.a. Protože potenciální výše splátek z úspory (<b><span class="live" data-k="Smax">${nb(base)}</span> mil. Kč</b>) převyšuje vaši předpokládanou spoluúčast (<b><span class="live" data-k="spol">${nb(vv.spol)}</span> mil. Kč</b>), budeme úroky stanovovat právě z této částky. Při úrokové sazbě <b><span class="live" data-k="r">${(Math.round(vv.r*100)/100).toFixed(2).replace('.',',')}</span> % p.a.</b> je výše úroků <b><span class="live" data-k="I">${nb(vv.I)}</span> mil. Kč</b>. Úspory plně pokrývají vaši spoluúčast a další prostředky není třeba na realizaci projektu alokovat.`; })(), ['u','n','r','I','spol','pv']);
+            mayorTypesInteractive(L.ask6, async ()=>{
+              const v4=compute();
+              if(v4.spol<=v4.pv+1e-9){
+                await dpuTypesThenP(L.dpu7A);
+                mayorSays(L.mayorEndAlt); endConversation();
+              }else{
+                await dpuTypesThenP(L.dpu7B(v4), ['okam']);
+                mayorTypesInteractive(L.ask7(v4), async ()=>{
+                  await dpuTypesThenP(L.dpu8);
+                  mayorTypesInteractive(L.ask8, async ()=>{
+                    await dpuTypesThenP(L.dpu9);
+                    mayorTypesInteractive(L.ask9, async ()=>{
+                      const v5=compute(); await dpuTypesThenP(L.dpu10(v5), ['kuhr','okam','prek']);
+                      mayorSays(L.mayorEnd); endConversation();
+                    });
+                  });
+                });
+              }
+            });
+          });
+        });
+      });
+    });
+  }
+
+  function endConversation(){
+    const end=document.createElement('div'); end.className='choiceHeader'; end.textContent='Konec rozhovoru'; feed.appendChild(end); feed.scrollTop=feed.scrollHeight;
+    const graphs=qs('#graphsCard'); if(graphs){ graphs.classList.remove('collapsed'); const btn=graphs.querySelector('.toggleBtn .txt'); if(btn) btn.textContent='Sbalit'; }
+    const cmp=qs('#compareCard'); if(cmp){ cmp.classList.remove('collapsed'); const btn=cmp.querySelector('.toggleBtn .txt'); if(btn) btn.textContent='Sbalit'; }
+    const extraCard=qs('#extraCard'); if(extraCard){ extraCard.classList.remove('collapsed'); const btn=extraCard.querySelector('.toggleBtn .txt'); if(btn) btn.textContent='Sbalit'; }
+  }
+
+  /* === Overlay === */
+  const overlay=qs('#overlay'), ovDyn=qs('#ov-dyn');
+  on(overlay.querySelector('.close'),'click',()=>overlay.style.display='none');
+  on(overlay,'click',e=>{ if(e.target===overlay) overlay.style.display='none'; });
+  function openBigChart(which){
+    if(which==='bars'){ ovDyn.innerHTML='<div><canvas class="bigCanvas" id="bigCanvas"></canvas><ul class="legend" id="bigLegend"></ul><div class="note" id="bigBarsNote"></div></div>'; }
+    else { ovDyn.innerHTML='<div><canvas class="bigCanvas" id="bigCanvas"></canvas><ul class="legend" id="bigLegend"></ul></div>'; }
+    overlay.style.display='flex'; const c=qs('#bigCanvas'), ctx=c.getContext('2d'); const doRedraw=()=>{ fitCanvas(c); const v=compute(); 
+      if(which==='pie'){
+        drawPieData(v,c,ctx);
+        const ul=qs('#bigLegend'); ul.innerHTML='';
+        [{label:'Dotace', val:v.dot, unit:' mil. Kč vč. DPH', col:COL.subsidy},
+         {label:'Jistina ze splátek z úspor', val:v.pv, unit:' mil. Kč vč. DPH', col:COL.principal},
+         {label:'Úrok ze splátek z úspor', val:v.I, unit:' mil. Kč', col:COL.interest},
+         {label:'Okamžitá spoluúčast města', val:Math.max(v.spol - v.pv, 0), unit:' mil. Kč vč. DPH', col:COL.immediate}
+        ].filter(it=>(it.val||0)>EPS).forEach(it=>{ const li=document.createElement('li'); li.innerHTML=`<span class="sw" style="background:${it.col}"></span><span>${nb(it.val)}${it.unit} – ${it.label}</span>`; ul.appendChild(li); });
+      }
+      if(which==='bars'){
+        drawBarsData(v,c,ctx,{labels:true, overlay:true});
+        const ul=qs('#bigLegend'); ul.innerHTML='';
+        [[COL.cost,'Náklady na energie','mil. Kč vč. DPH/rok'],
+         [COL.principal,'Jistina ze splátek z úspor','mil. Kč vč. DPH/rok'],
+         [COL.interest,'Úrok ze splátek z úspor','mil. Kč/rok'],
+         [COL.immediate,'Okamžitá spoluúčast města','mil. Kč vč. DPH'],
+         [COL.savings,'Reálná úspora nákladů','mil. Kč vč. DPH/rok']
+        ].forEach(([c2,l,u])=>{ const li=document.createElement('li'); li.innerHTML=`<span class="sw" style="background:${c2}"></span><span>${l} (${u})</span>`; ul.appendChild(li); });
+      }
+    };
+    doRedraw(); const _onResize=()=>{ if(overlay.style.display==='flex') doRedraw(); };
+    window.addEventListener('resize', _onResize);
+    on(overlay.querySelector('.close'),'click',()=>window.removeEventListener('resize', _onResize), {once:true});
+    setTimeout(doRedraw,0);
+  }
+
+  /* === Live updates + invalidace === */
+  function invalidateChat(msgType){
+    const note=qs('#chatNotice'); if(!note) return; const card=qs('#chatCard');
+    if(msgType==='scenario'){
+      if(card) card.classList.add('chat-disabled');
+      note.classList.remove('info'); note.classList.add('danger');
+      qs('#chatNoticeMsg').textContent='Vstupní hodnoty byly změněny způsobem, který má vliv na scénář rozhovoru.';
+      note.querySelector('.chatNotice-actions').innerHTML='<button class="btn small" id="restartBtnInline">Znovu zahájit rozhovor ↺</button>';
+    }else{
+      if(card) card.classList.remove('chat-disabled');
+      note.classList.remove('danger'); note.classList.add('info');
+      qs('#chatNoticeMsg').textContent='Vstupní hodnoty byly změněny. Tyto změny mohou ovlivnit rozhodování při výběru variant.';
+      note.querySelector('.chatNotice-actions').innerHTML='<button class="btn small" id="restartBtnInline">Znovu zahájit rozhovor ↺</button><span class="sep"> &nbsp;nebo jen&nbsp; </span><button class="btn small" id="applyBtnInline">Aktualizovat hodnoty v rozhovoru</button>';
+    }
+    note.classList.add('show');
+    const rb = qs('#restartBtnInline'); if(rb){ on(rb,'click',()=>{ feed.innerHTML=''; clearOutputsPanel(); clearInvalidation(); startConversation(); }); }
+    const ab = qs('#applyBtnInline'); if(ab){ on(ab,'click',()=>{ applyConversationValues(); clearInvalidation(); }); }
+  }
+  function clearInvalidation(){ chatInvalidated=false; const card=qs('#chatCard'); if(card) card.classList.remove('chat-disabled'); const note=qs('#chatNotice'); if(note) note.classList.remove('show'); }
+
+  function handleInputsChanged(){
+    const v=compute();
+    if(started){
+      const curCat = (v.okam <= (1e-9)) ? 0 : 1;
+      if(curCat !== baseCat){ invalidateChat('scenario'); }
+      else{
+        const invNow = +qs('#in_inv').value||0, e0Now = +qs('#in_e0').value||0;
+        if(Math.abs(invNow - appliedInputs.inv) > EPS || Math.abs(e0Now - appliedInputs.e0) > EPS){ invalidateChat('info'); }
+      }
+    }
+    refreshVisuals();
+  }
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(null,a), ms); }; }
+  const onInputsDebounced = debounce(handleInputsChanged, 150);
+
+  function renderAll(){
+    const v=compute();
+    drawPieData(v); drawBarsData(v); renderComparison();
+    const bl=qs('#barsLegend'); bl.innerHTML='';
+    [[COL.cost,'Náklady na energie','mil. Kč vč. DPH/rok'],
+     [COL.principal,'Jistina ze splátek z úspor','mil. Kč vč. DPH/rok'],
+     [COL.interest,'Úrok ze splátek z úspor','mil. Kč/rok'],
+     [COL.immediate,'Okamžitá spoluúčast města','mil. Kč vč. DPH'],
+     [COL.savings,'Reálná úspora nákladů','mil. Kč vč. DPH/rok']
+    ].forEach(([c,l,u])=>{ const li=document.createElement('li'); li.innerHTML=`<span class="sw" style="background:${c}"></span><span>${l} (${u})</span>`; bl.appendChild(li); });
+  }
+
+  /* === Collapsible helper === */
+  function attachCollapsible(card){ if(!card) return; const head=card.querySelector('.panelHead'); if(!head) return; const btn=head.querySelector('.toggleBtn'); if(!btn) return; on(btn,'click',()=>{ const coll=card.classList.toggle('collapsed'); btn.querySelector('.txt').textContent = coll? 'Rozbalit' : 'Sbalit'; }); }
+
+  /* === Init === */
+  on(qs('#in_inv'),'input',onInputsDebounced); on(qs('#in_e0'),'input',onInputsDebounced);
+  on(qs('#in_dot'),'input',onInputsDebounced); on(qs('#in_u'),'input',onInputsDebounced); on(qs('#in_n'),'input',onInputsDebounced); on(qs('#in_r'),'input',onInputsDebounced);
+  on(qs('#in_rinv'),'input',onInputsDebounced); on(qs('#in_ninv'),'input',onInputsDebounced); on(qs('#chk_bon'),'change',onInputsDebounced);
+
+  on(qs('#restartBtn'),'click',()=>{ feed.innerHTML=''; clearOutputsPanel(); clearInvalidation(); startConversation(); });
+  
+  qsa('.canvasWrap').forEach(w=> on(w,'click',()=> openBigChart(w.dataset.big)) );
+
+  attachCollapsible(qs('#compareCard'));
+  attachCollapsible(qs('#graphsCard'));
+  attachCollapsible(qs('#extraCard'));
+  addHintHandlers();
+  tryLoadLogo();
+  renderAll();
+  // Auto-start the dialogue so values a) proběhnou a b) bubliny se zobrazí hned
+  startConversation();
+})();
+});
+
+window.addEventListener('error', function(e){
+  try{
+    var wrap = document.querySelector('.wrap');
+    if(!wrap) return;
+    var note = document.getElementById('runtimeErrorBanner');
+    if(!note){
+      note = document.createElement('div');
+      note.id = 'runtimeErrorBanner';
+      note.style.cssText = 'margin:8px 0;padding:10px 12px;border:1px solid #ef4444;background:#fff1f2;color:#7f1d1d;border-left:4px solid #ef4444;border-radius:6px;font:14px system-ui;';
+      wrap.prepend(note);
+    }
+    note.textContent = 'Chyba skriptu: ' + (e.message || 'neznámá chyba');
+  }catch(_){}
+});
+
+</script>
+
+<style>
+/* ===== Visible flight path overlay ===== */
+#flightOverlay{position:absolute;left:0;top:0;pointer-events:none;z-index:9999}
+#flightOverlay svg{display:block}
+#flightOverlay .trace{fill:none;stroke-width:5;stroke:rgba(234,179,8,.98);stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35))}
+#flightOverlay .dot{fill:rgba(234,179,8,1)}
+</style>
+<script>
+(function(){
+  function ensureOverlay(){
+    let ov=document.getElementById('flightOverlay');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.id='flightOverlay';
+      ov.innerHTML='<svg viewBox=\"0 0 '+window.innerWidth+' '+window.innerHeight+'\" preserveAspectRatio=\"none\"><path class=\"trace\"/><circle class=\"dot\" r=\"7\" cx=\"0\" cy=\"0\" opacity=\"0\"/></svg>';
+      document.body.appendChild(ov);
+    }else{
+      const svg=ov.querySelector('svg');
+      svg.setAttribute('viewBox','0 0 '+window.innerWidth+' '+window.innerHeight);
+    }
+    return ov;
+  }
+  window.showFlightPath=function(sx,sy,tx,ty,duration,labelText){
+    try{
+      const ov=ensureOverlay();
+      const svg=ov.querySelector('svg');
+      const path=ov.querySelector('.trace');
+      const dot=ov.querySelector('.dot');
+      const lbl=ov.querySelector('.ghostLbl');
+      if(labelText){ lbl.textContent=labelText.trim(); lbl.setAttribute('opacity','1'); }
+      // --- Extended multi-segment path: approach near Outputs, then overshoot, then target ---
+      // Try to locate the Outputs panel to bias the route toward it
+      function findPanel(n){
+        while(n){
+          if(n.id && (/^(outputs|vystupy|outputsCard|vystupyCard)$/i).test(n.id)) return n;
+          if(n.classList && n.classList.length){
+            const cls = Array.from(n.classList).join(' ');
+            if(/(outputs|vystupy)/i.test(cls)) return n;
+            if(/(card|panel|results|summary)/i.test(cls) && (n.querySelector('#k_inv, #k_u, #k_n, #k_Smax, #k_S, #k_r, #k_I, #k_pv, #k_kuhr, #k_prekuv') || n.querySelector('.v'))) return n;
+          }
+          n = n.parentElement;
+        }
+        return null;
+      }
+      let targetEl = document.elementFromPoint(tx - window.scrollX, ty - window.scrollY);
+      const outputsPanel = findPanel(targetEl) || (document.querySelector('#outputs, #vystupy, .outputs, .vystupy, #outputsCard, #vystupyCard') || null);
+      const panelRect = outputsPanel ? outputsPanel.getBoundingClientRect() : null;
+
+      // Approach point near panel
+      let ax = (sx+tx)/2, ay = Math.min(sy,ty) - Math.max(140, Math.abs(tx-sx)*0.25);
+      if(panelRect){
+        const px = panelRect.left + window.scrollX;
+        const py = panelRect.top + window.scrollY;
+        ax = px + Math.min(90, panelRect.width*0.2);
+        ay = py + Math.min(120, Math.max(32, panelRect.height*0.16));
+      }
+
+      // Overshoot point past the target to lengthen path
+      let ox, oy;
+      if(panelRect){
+        const pcx = panelRect.left + window.scrollX + panelRect.width*0.75;
+        const pcy = panelRect.top + window.scrollY + Math.min(panelRect.height*0.7, 180);
+        const dx = Math.max(180, Math.abs(tx - sx) * 0.8);
+        const dy = Math.max(140, Math.abs(ty - sy) * 0.6);
+        ox = Math.max(tx + dx, pcx);
+        oy = (ty <= pcy ? ty + dy : ty - dy*0.4);
+      } else {
+        const dx = Math.max(220, Math.abs(tx - sx) * 0.9);
+        const dy = Math.max(140, Math.abs(ty - sy) * 0.6);
+        ox = tx + dx;
+        oy = ty - dy*0.35;
+      }
+
+      // Control points for smooth curves
+      const c1x = (sx+ax)/2, c1y = Math.min(sy,ay) - Math.max(90, Math.abs(ax-sx)*0.18);
+      const c2x = (ax+ox)/2, c2y = Math.min(ay,oy) - Math.max(80, Math.abs(ox-ax)*0.14);
+      const c3x = (ox+tx)/2, c3y = Math.min(oy,ty) - Math.max(70, Math.abs(tx-ox)*0.12);
+
+      const d = `M ${sx},${sy} Q ${c1x},${c1y} ${ax},${ay} Q ${c2x},${c2y} ${ox},${oy} Q ${c3x},${c3y} ${tx},${ty}`;
+      path.setAttribute('d', d);
+      window.__lastFlightPathD = d;
+      // Draw animation via stroke-dash
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+
+      // Dot setup
+      dot.setAttribute('opacity','1');
+
+      const start = performance.now();
+      function step(now){
+        const t = Math.min(1, (now-start)/duration);
+        const offs = len*(1-t);
+        path.style.strokeDashoffset = offs;
+
+        // Move dot along the path
+        const pt = path.getPointAtLength(len*t);
+        dot.setAttribute('cx', pt.x);
+        dot.setAttribute('cy', pt.y);
+        if(labelText){ lbl.setAttribute('x', pt.x + 10); lbl.setAttribute('y', pt.y - 8); }
+
+        if(t<1) requestAnimationFrame(step);
+        else {
+          // Fade out gracefully then clear
+          path.style.transition='opacity 420ms ease-out'; dot.style.transition='opacity 420ms ease-out'; path.style.opacity='0';
+          dot.style.opacity='0';
+          if(labelText){ lbl.style.transition='opacity 420ms ease-out'; lbl.style.opacity='0'; }
+          setTimeout(()=>{
+            // reset for next run
+            path.removeAttribute('style');
+            dot.removeAttribute('style');
+          }, 240);
+        }
+      }
+      requestAnimationFrame(step);
+    }catch(e){ /* non-fatal */ }
+  };
+})();
+</script>
+
+
+<script>
+(function(){
+  function parseNumberParts(str){
+    // Find first number-like token
+    const m = (str||'').match(/([-+]?\d{1,3}(?:[ .]\d{3})*(?:[,.]\d+)?|[-+]?\d+(?:[,.]\d+)?)/);
+    if(!m) return null;
+    const token = m[0];
+    const start = m.index;
+    const end = start + token.length;
+    const prefix = str.slice(0,start);
+    const suffix = str.slice(end);
+    const usesComma = token.indexOf(',')>-1 && (token.indexOf('.')==-1 || token.lastIndexOf(',')>token.lastIndexOf('.'));
+    const cleaned = token.replace(/[ .]/g,'').replace(',', '.');
+    const value = parseFloat(cleaned);
+    // decimals
+    const decimalSep = usesComma ? ',' : (token.indexOf('.')>-1 ? '.' : null);
+    const decimals = decimalSep ? (token.split(decimalSep)[1]?.length || 0) : 0;
+    return {prefix,suffix,value,decimals,usesComma};
+  }
+  function formatLike(parts, val){
+    if(!parts) return String(val);
+    const fixed = (parts.decimals>0) ? val.toFixed(parts.decimals) : Math.round(val).toString();
+    let [intPart, decPart] = fixed.split('.');
+    // thousand grouping with spaces
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    let out = intPart;
+    if(decPart){ out += parts.usesComma ? (','+decPart) : ('.'+decPart); }
+    return parts.prefix + out + parts.suffix;
+  }
+  window.countUpOnTarget = function(node, duration){
+    try{
+      if(!node) return;
+      const endText = node.textContent;
+      const startText = node.dataset && node.dataset.prevText ? node.dataset.prevText : endText;
+      const pStart = parseNumberParts(startText);
+      const pEnd = parseNumberParts(endText);
+      if(!pEnd){ return; } // nothing numeric to animate
+      const from = (pStart && isFinite(pStart.value)) ? pStart.value : 0;
+      const to = pEnd.value;
+      const partsFmt = pEnd; // format like final text
+      const t0 = performance.now();
+      function step(now){
+        const t = Math.min(1, (now - t0) / duration);
+        const cur = from + (to - from) * (t<1 ? (1 - Math.pow(1 - t, 2)) : 1); // ease-out quad
+        node.textContent = formatLike(partsFmt, cur);
+        if(t<1) requestAnimationFrame(step);
+        else node.textContent = endText; // ensure exact final
+      }
+      requestAnimationFrame(step);
+    }catch(e){ /* silent */ }
+  };
+})();
+</script>
+
+</body>
+</html>
